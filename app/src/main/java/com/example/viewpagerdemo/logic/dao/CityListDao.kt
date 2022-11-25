@@ -4,24 +4,25 @@ import android.content.Context
 import androidx.core.content.edit
 import com.example.viewpagerdemo.ViewPagerDemoApplication
 import com.example.viewpagerdemo.logic.model.City
-import java.util.LinkedList
 
-object cityListDao {
+// todo( need to run in coroutine )
+object CityListDao {
     // create sharedPreferences instance
     private fun sharedPreferences() =
         ViewPagerDemoApplication.context.getSharedPreferences("city_list", Context.MODE_PRIVATE)
 
     // city$position
     fun saveCity(city: City) {
-        val oldCount = sharedPreferences().getInt("count", 0);
+        val oldCount = sharedPreferences().getInt("count", 0)
         sharedPreferences().edit {
             putString("city" + (oldCount + 1), city.name)
             putInt("count", oldCount + 1)
+            commit()
         }
     }
 
     fun getCity(index: Int): City? {
-        val city = sharedPreferences().getString("city" + (index + 1), null);
+        val city = sharedPreferences().getString("city" + (index + 1), null)
         return if (city != null) {
             City(city)
         } else {
@@ -47,6 +48,7 @@ object cityListDao {
                 putString("city$i", getCity(i + 1)!!.name)
             }
             remove("city$oldCount")
+            commit()
         }
     }
 
@@ -58,5 +60,5 @@ object cityListDao {
     }
 
     // return -1 if doesn't have this property
-    fun getCityCount(): Int = sharedPreferences().getInt("count", -1);
+    fun getCityCount(): Int = sharedPreferences().getInt("count", -1)
 }
