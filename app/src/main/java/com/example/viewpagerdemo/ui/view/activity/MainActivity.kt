@@ -1,58 +1,78 @@
 package com.example.viewpagerdemo.ui.view.activity
 
+import android.annotation.SuppressLint
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-import android.view.Window
-import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProviders
 import androidx.viewpager2.widget.ViewPager2
-import com.example.viewpagerdemo.ui.view.fragment.adapter.CustomRvFragmentAdapter
 import com.example.viewpagerdemo.R
-import com.example.viewpagerdemo.logic.dao.cityListDao
+import com.example.viewpagerdemo.logic.dao.CityListDao
+import com.example.viewpagerdemo.ui.view.adapter.CustomPagerFragAdapter
 import com.example.viewpagerdemo.ui.viewmodel.MainActivityViewModel
-import com.google.android.material.tabs.TabLayout
-import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    lateinit var viewPager2: ViewPager2
-//    lateinit var adapter: CustomRvAdapter
-    lateinit var adapter: CustomRvFragmentAdapter
-    private val cityListViewModel by lazy { ViewModelProviders.of(this).get(MainActivityViewModel::class.java) }
+    private val cityListViewModel by lazy {
+        ViewModelProviders.of(this).get(MainActivityViewModel::class.java)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.i("MainActivity", "onCreate: invoked!")
         setContentView(R.layout.activity_main)
+    }
 
-        if (cityListDao.isCitySaved()) {
-            cityListViewModel.cityList.value = cityListDao.getCityList()
-        } else {
-            cityListViewModel.cityList.value = ArrayList()
+    @SuppressLint("NotifyDataSetChanged")
+    @OptIn(DelicateCoroutinesApi::class)
+    override fun onResume() {
+        super.onResume()
+        Log.i("MainActivity", "onResume: invoked!")
+
+        // get view component
+        val viewPager2: ViewPager2 = findViewById(R.id.view_pager)
+//        val tabLayout: TabLayout = findViewById(R.id.tabLayout)
+
+        // get adapter instance & set ViewPager's adapter
+        val adapter = CustomPagerFragAdapter(this)
+        viewPager2.adapter = adapter
+
+
+        GlobalScope.launch {
+            // whether city data is saved
+            if (CityListDao.isCitySaved()) {
+                cityListViewModel.cityList.postValue(CityListDao.getCityList())
+            } else {
+                cityListViewModel.cityList.postValue(ArrayList())
+            }
         }
 
-//        adapter = CustomRvAdapter()
-        adapter = CustomRvFragmentAdapter(this)
-        for(i in 0 until cityListViewModel.cityList.value!!.count())
-            adapter.addFragment(cityListViewModel.cityList.value!![i])
+        cityListViewModel.cityList.observe(this) { cityList ->
+            adapter.clearFragment()
+            adapter.notifyDataSetChanged()
+            // add fragment page
+            for (i in 0 until cityList.count())
+                adapter.addFragment(cityList[i])
 
-        viewPager2 = findViewById(R.id.view_pager)
-        val tablayout: TabLayout = findViewById(R.id.tabLayout)
+            viewPager2.adapter = adapter
+            // todo ( BUG: bind tableLayout with the viewpager
+            //        the tab's count(position) should be updated )
+//            TabLayoutMediator(tabLayout, viewPager2) { tab, position ->
+//                tab.text = cityList[position].name
+//            }.attach()
+        }
 
-        viewPager2.adapter = adapter
-        TabLayoutMediator(tablayout, viewPager2) { tab, position ->
-//            tab.text = position.toString()
-            tab.text = cityListViewModel.cityList.value!![position].name
-        }.attach()
-
-//        viewPager2.registerOnPageChangeCallback (object: ViewPager2.OnPageChangeCallback() {
-//            override fun onPageSelected(position: Int) {
-//                super.onPageSelected(position)
-//                Toast.makeText(this@MainActivity, "page changed!", Toast.LENGTH_SHORT).show()
-//            }
-//        })
-
+        // page changed callback function here
+        viewPager2.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+            }
+        })
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -67,6 +87,6 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
             }
         }
-        return true;
+        return true
     }
 }

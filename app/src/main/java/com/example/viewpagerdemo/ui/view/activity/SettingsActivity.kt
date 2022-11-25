@@ -1,20 +1,23 @@
 package com.example.viewpagerdemo.ui.view.activity
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.viewpagerdemo.databinding.ActivitySettingsBinding
-import com.example.viewpagerdemo.logic.dao.cityListDao
+import com.example.viewpagerdemo.logic.dao.CityListDao
 import com.example.viewpagerdemo.logic.model.City
-import com.example.viewpagerdemo.ui.view.activity.adapter.SettingsActivityRvAdapter
-import com.example.viewpagerdemo.ui.viewmodel.SettingsViewModel
+import com.example.viewpagerdemo.ui.view.adapter.SettingsActivityRvAdapter
+import com.example.viewpagerdemo.ui.viewmodel.SettingsActivityViewModel
 
+// todo( this activity need to move SharedPreference from ui thread to sub-thread )
 class SettingsActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsBinding
-    private val cityListViewModel by lazy { ViewModelProviders.of(this).get(SettingsViewModel::class.java)}
+    private val cityListViewModel by lazy {
+        ViewModelProviders.of(this).get(SettingsActivityViewModel::class.java)
+    }
 
     // BUG: 删除一次数据后再添加数据会添加为上一次输入的数据，而非本次输入希望添加的数据。但是在xml文件中是正常的
     // BUG-FIXED: 使用yourRecyclerView.adapter.notifyItemChanged(position, count)
@@ -30,8 +33,9 @@ class SettingsActivity : AppCompatActivity() {
         val placeInput = binding.placeInput
 
         // liveData init
-        if (cityListDao.isCitySaved()) {
-            cityListViewModel.cityList.value = cityListDao.getCityList()
+        if (CityListDao.isCitySaved()) {
+            // use postValue can cause NullPointerException
+            cityListViewModel.cityList.value = CityListDao.getCityList()
         } else {
             cityListViewModel.cityList.value = ArrayList()
         }
@@ -47,15 +51,18 @@ class SettingsActivity : AppCompatActivity() {
         addCityBtn.setOnClickListener {
             val cityName = placeInput.text.toString().trim()
             if (cityName != "") {
-                Log.e("", "", )
+                Log.e("", "")
                 // save in ViewModel(LiveData)
                 cityListViewModel.cityList.value!!.add(City(cityName))
                 // save in sharedPreference
-                cityListDao.saveCity(City(cityName))
+                CityListDao.saveCity(City(cityName))
                 // refresh Rv
                 settingsRv.adapter!!.notifyItemInserted(cityListViewModel.cityList.value!!.size)
                 //this step is important!!!
-                settingsRv.adapter!!.notifyItemRangeChanged(cityListViewModel.cityList.value!!.size - 1, 1)
+                settingsRv.adapter!!.notifyItemRangeChanged(
+                    cityListViewModel.cityList.value!!.size - 1,
+                    1
+                )
                 placeInput.setText("")
             } else {
                 Toast.makeText(this, "please enter not-null string", Toast.LENGTH_SHORT).show()
@@ -68,14 +75,17 @@ class SettingsActivity : AppCompatActivity() {
                 // remove in ViewModel(LiveData)
                 cityListViewModel.cityList.value!!.removeAt(cityListViewModel.cityList.value!!.size - 1)
                 // remove in sharedPreference
-                cityListDao.removeCity(cityListDao.getCityCount() - 1)
+                CityListDao.removeCity(CityListDao.getCityCount() - 1)
                 // refresh
-                settingsRv.adapter?.notifyItemRemoved(cityListViewModel.cityList.value!!.size + 1)
+                settingsRv.adapter!!.notifyItemRemoved(cityListViewModel.cityList.value!!.size + 1)
                 // this step is important!!!
-                settingsRv.adapter!!.notifyItemRangeChanged(cityListViewModel.cityList.value!!.size - 1, 1)
+                settingsRv.adapter!!.notifyItemRangeChanged(
+                    cityListViewModel.cityList.value!!.size - 1,
+                    1
+                )
             } else {
                 Toast.makeText(this, "list is empty", Toast.LENGTH_SHORT).show()
             }
-5        }
+        }
     }
 }
